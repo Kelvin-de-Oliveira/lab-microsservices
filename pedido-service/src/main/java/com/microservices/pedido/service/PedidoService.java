@@ -50,7 +50,13 @@ public class PedidoService {
         HttpEntity<Map<String, Integer>> entity =
                 new HttpEntity<>(Map.of("quantidade", quantidade), headers);
 
-        restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+        try {
+            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+        } catch (HttpClientErrorException e) {
+            throw new ReservaRecusadaException(e.getStatusCode(), e.getResponseBodyAsString());
+        } catch (ResourceAccessException | HttpServerErrorException e) {
+            throw new EstoqueIndisponivelException();
+        }
     }
 
     public List<Pedido> listar() {
