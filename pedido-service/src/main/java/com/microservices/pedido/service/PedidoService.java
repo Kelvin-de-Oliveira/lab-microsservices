@@ -16,25 +16,37 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.microservices.pedido.exception.EstoqueIndisponivelException;
+import com.microservices.pedido.exception.ReservaRecusadaException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+
+
 @Service
 public class PedidoService {
 
     private final PedidoRepository repository;
     private final RestTemplate restTemplate;
     private final String estoqueUrl;
+    private final boolean simularFalhaAposReserva; // para o teste de falha, detalhei melhor no documento compartilhado
 
     public PedidoService(PedidoRepository repository,
                          RestTemplate restTemplate,
-                         @Value("${estoque.url}") String estoqueUrl) {
+                         @Value("${estoque.url}") String estoqueUrl,
+                         @Value("${simulacao.falha-apos-reserva}") boolean simularFalhaAposReserva){
         this.repository = repository;
         this.restTemplate = restTemplate;
         this.estoqueUrl = estoqueUrl;
+        this.simularFalhaAposReserva = simularFalhaAposReserva;
     }
 
     /** Todo novo pedido nasce com status AGUARDANDO_PAGAMENTO. */
     public Pedido criar(CriarPedidoRequest request) {
         reservarEstoque(request.produtoId(), request.quantidade());
-
+        if (simularFalhaAposReserva) {
+            throw new IllegalStateException("Falha simulada após a reserva do estoque");
+        }
         Pedido pedido = new Pedido();
         pedido.setProdutoId(request.produtoId());
         pedido.setQuantidade(request.quantidade());
