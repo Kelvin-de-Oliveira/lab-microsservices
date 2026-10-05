@@ -33,13 +33,16 @@ public class PedidoService {
     private final RestTemplate restTemplate;
     private final String estoqueUrl;
     private final boolean simularFalhaAposReserva; // para o teste de falha, detalhei melhor no documento compartilhado
+    private final RabbitTemplate rabbitTemplate;
 
     public PedidoService(PedidoRepository repository,
                          RestTemplate restTemplate,
+                         RabbitTemplate rabbitTemplate,
                          @Value("${estoque.url}") String estoqueUrl,
                          @Value("${simulacao.falha-apos-reserva}") boolean simularFalhaAposReserva){
         this.repository = repository;
         this.restTemplate = restTemplate;
+        this.rabbitTemplate = rabbitTemplate;
         this.estoqueUrl = estoqueUrl;
         this.simularFalhaAposReserva = simularFalhaAposReserva;
     }
