@@ -14,9 +14,9 @@ Implementado até a **Etapa 6**.
 | 4 | Docker Compose | Implementado |
 | 5 | RabbitMQ (exchange, fila e publicação do evento) | Implementada |
 | 6 | Pagamento Service (consumo do evento) | Implementada |
-| 7 a 10 | Testes funcionais, falha, recuperação e escalabilidade | Execuções pendentes  |
-| 11 | Observabilidade (`correlationId` nos logs de todos os serviços) | **Não implementada** |
-| 12 | Atualização assíncrona do pedido (`pagamento.processado`) | **Não implementada** |
+| 7 a 10 | Testes funcionais, falha, recuperação e escalabilidade | Execuções pendentes |
+| 11 | Observabilidade (`correlationId` nos logs de todos os serviços) | implementada |
+| 12 | Atualização assíncrona do pedido (`pagamento.processado`) | implementada |
 
 Consequências do estado atual, que são esperadas nas execuções:
 
