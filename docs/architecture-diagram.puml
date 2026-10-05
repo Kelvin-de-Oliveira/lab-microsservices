@@ -1,0 +1,40 @@
+@startuml arquitetura
+skinparam componentStyle rectangle
+skinparam shadowing false
+left to right direction
+
+actor Cliente
+
+package "microservices-lab (Docker Compose)" {
+
+  component "pedido-service\n:8080" as Pedido
+  database "pedido-db\n(PostgreSQL)" as PedidoDb
+
+  component "estoque-service\nhost 8081:8080" as Estoque
+  database "estoque-db\n(PostgreSQL)" as EstoqueDb
+
+  component "pagamento-service\n(escalável, sem porta no host)" as Pagamento
+  database "pagamento-db\n(PostgreSQL)" as PagamentoDb
+
+  queue "RabbitMQ\nExchange: pedidos.exchange\nFila: pedido.criado\nFila: pagamento.processado" as Broker
+}
+
+Cliente --> Pedido : REST\nPOST /pedidos\nGET /pedidos
+Cliente --> Estoque : REST\nGET /produtos
+
+Pedido --> Estoque : REST (RestTemplate)\nPUT /produtos/{id}/reservar
+
+Pedido ..> Broker : publica\npedido.criado
+Broker ..> Pagamento : entrega\npedido.criado
+Pagamento ..> Broker : publica\npagamento.processado
+Broker ..> Pedido : entrega\npagamento.processado
+
+Pedido --> PedidoDb
+Estoque --> EstoqueDb
+Pagamento --> PagamentoDb
+
+note bottom of Broker
+  Linhas tracejadas: mensagens assíncronas
+  Linhas cheias: REST síncrono e acesso a banco
+end note
+@enduml
