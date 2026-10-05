@@ -1,26 +1,29 @@
 package com.microservices.pedido.service;
 
+import com.microservices.pedido.config.RabbitConfig;
 import com.microservices.pedido.dto.CriarPedidoRequest;
+import com.microservices.pedido.dto.PedidoCriadoEvento;
+import com.microservices.pedido.exception.EstoqueIndisponivelException;
+import com.microservices.pedido.exception.ReservaRecusadaException;
 import com.microservices.pedido.model.Pedido;
 import com.microservices.pedido.model.StatusPedido;
 import com.microservices.pedido.repository.PedidoRepository;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import com.microservices.pedido.exception.EstoqueIndisponivelException;
-import com.microservices.pedido.exception.ReservaRecusadaException;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.ResourceAccessException;
+import java.util.UUID;
 
 
 @Service
@@ -43,15 +46,25 @@ public class PedidoService {
 
     /** Todo novo pedido nasce com status AGUARDANDO_PAGAMENTO. */
     public Pedido criar(CriarPedidoRequest request) {
+        String correlationId = UUID.randomUUID().toString();
+
         reservarEstoque(request.produtoId(), request.quantidade());
+
         if (simularFalhaAposReserva) {
             throw new IllegalStateException("Falha simulada após a reserva do estoque");
         }
+
         Pedido pedido = new Pedido();
         pedido.setProdutoId(request.produtoId());
         pedido.setQuantidade(request.quantidade());
         pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO.name());
-        return repository.save(pedido);
+        pedido = repository.save(pedido);
+
+        PedidoCriadoEvento evento = new PedidoCriadoEvento(
+                pedido.getId(), pedido.getProdutoId(), pedido.getQuantidade(), correlationId);
+        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.ROUTING_KEY, evento);
+
+        return pedido;
     }
 
     private void reservarEstoque(Long produtoId, Integer quantidade) {
