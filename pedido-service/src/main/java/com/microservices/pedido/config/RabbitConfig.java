@@ -15,6 +15,8 @@ public class RabbitConfig {
     public static final String EXCHANGE = "pedidos.exchange";
     public static final String QUEUE = "pedido.criado";
     public static final String ROUTING_KEY = "pedido.criado";
+    public static final String PAGAMENTO_PROCESSADO_QUEUE = "pagamento.processado";
+    public static final String PAGAMENTO_PROCESSADO_ROUTING_KEY = "pagamento.processado";
 
     @Bean
     public DirectExchange pedidosExchange() {
@@ -34,5 +36,15 @@ public class RabbitConfig {
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public Queue pagamentoProcessadoQueue() {
+        return new Queue(PAGAMENTO_PROCESSADO_QUEUE, true);
+    }
+
+    @Bean
+    public Binding pagamentoProcessadoBinding(Queue pagamentoProcessadoQueue, DirectExchange pedidosExchange) {
+        return BindingBuilder.bind(pagamentoProcessadoQueue).to(pedidosExchange).with(PAGAMENTO_PROCESSADO_ROUTING_KEY);
     }
 }
