@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
@@ -34,7 +35,9 @@ public class ProdutoController {
     }
 
     @PutMapping("/{id}/reservar")
-    public void reservar(@PathVariable Long id, @Valid @RequestBody ReservaRequest request) {
-        produtoService.reservar(id, request.quantidade());
+    public void reservar(@PathVariable Long id,
+                         @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId,
+                         @Valid @RequestBody ReservaRequest request) {
+        produtoService.reservar(id, request.quantidade(), correlationId);
     }
 }

@@ -19,6 +19,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ public class PedidoService {
     private final String estoqueUrl;
     private final boolean simularFalhaAposReserva; // para o teste de falha, detalhei melhor no documento compartilhado
     private final RabbitTemplate rabbitTemplate;
+    private static final Logger log = LoggerFactory.getLogger(PedidoService.class);
 
     public PedidoService(PedidoRepository repository,
                          RestTemplate restTemplate,
@@ -51,7 +54,7 @@ public class PedidoService {
     public Pedido criar(CriarPedidoRequest request) {
         String correlationId = UUID.randomUUID().toString();
 
-        reservarEstoque(request.produtoId(), request.quantidade());
+        reservarEstoque(request.produtoId(), request.quantidade(), correlationId);
 
         if (simularFalhaAposReserva) {
             throw new IllegalStateException("Falha simulada após a reserva do estoque");
@@ -63,18 +66,23 @@ public class PedidoService {
         pedido.setStatus(StatusPedido.AGUARDANDO_PAGAMENTO.name());
         pedido = repository.save(pedido);
 
-        PedidoCriadoEvento evento = new PedidoCriadoEvento(
-                pedido.getId(), pedido.getProdutoId(), pedido.getQuantidade(), correlationId);
+        log.info("correlationId={} Pedido criado pedidoId={}", correlationId, pedido.getId());
+
+        PedidoCriadoEvento evento = new PedidoCriadoEvento(pedido.getId(), pedido.getProdutoId(), pedido.getQuantidade(), correlationId);
         rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.ROUTING_KEY, evento);
+
+        log.info("correlationId={} Evento publicado pedidoId={}", correlationId, pedido.getId());
 
         return pedido;
     }
 
-    private void reservarEstoque(Long produtoId, Integer quantidade) {
+    private void reservarEstoque(Long produtoId, Integer quantidade, String correlationId) {
         String url = estoqueUrl + "/produtos/" + produtoId + "/reservar";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Correlation-Id", correlationId);
+
         HttpEntity<Map<String, Integer>> entity =
                 new HttpEntity<>(Map.of("quantidade", quantidade), headers);
 
